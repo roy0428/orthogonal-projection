@@ -1,6 +1,5 @@
 import numpy as np
 import cv2
-from util import *
 
 class ImageTransformer(object):
     """ Perspective transformation class for image
@@ -25,10 +24,11 @@ class ImageTransformer(object):
         d = np.sqrt(self.height**2 + self.width**2)
         self.focal = d / (2 * np.sin(gamma) if np.sin(gamma) != 0 else 1)
         dz = self.focal
-
+        
         # Get projection matrix
         mat = self.get_M(theta, phi, gamma, dx, dy, dz)
-        
+        #print(mat)
+
         return cv2.warpPerspective(self.image.copy(), mat, (self.width, self.height))
 
 
@@ -46,34 +46,32 @@ class ImageTransformer(object):
                         [0, 0, 1]])
         
         # Rotation matrices around the X, Y, and Z axis
-        RX = np.array([ [1, 0, 0, 0],
-                        [0, np.cos(theta), -np.sin(theta), 0],
-                        [0, np.sin(theta), np.cos(theta), 0],
-                        [0, 0, 0, 1]])
+        RX = np.array([ [1, 0, 0],
+                        [0, np.cos(theta), -np.sin(theta)],
+                        [0, np.sin(theta), np.cos(theta)]])
         
-        RY = np.array([ [np.cos(phi), 0, -np.sin(phi), 0],
-                        [0, 1, 0, 0],
-                        [np.sin(phi), 0, np.cos(phi), 0],
-                        [0, 0, 0, 1]])
+        RY = np.array([ [np.cos(phi), 0, np.sin(phi)],
+                        [0, 1, 0],
+                        [-np.sin(phi), 0, np.cos(phi)]])
         
-        RZ = np.array([ [np.cos(gamma), -np.sin(gamma), 0, 0],
-                        [np.sin(gamma), np.cos(gamma), 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
+        RZ = np.array([ [np.cos(gamma), -np.sin(gamma), 0],
+                        [np.sin(gamma), np.cos(gamma), 0],
+                        [0, 0, 1]])
 
         # Composed rotation matrix with (RX, RY, RZ)
         R = np.dot(np.dot(RX, RY), RZ)
 
         # Translation matrix
-        T = np.array([  [1, 0, 0, dx],
-                        [0, 1, 0, dy],
-                        [0, 0, 1, dz],
-                        [0, 0, 0, 1]])
+        T = np.array([  [dx],
+                        [dy],
+                        [dz]])
 
         # Projection 3D -> 2D matrix
-        A2 = np.array([ [f, 0, w/2, 0],
-                        [0, f, h/2, 0],
-                        [0, 0, 1, 0]])
+        A2 = np.array([ [f, 0, w/2],
+                        [0, f, h/2],
+                        [0, 0, 1]])
 
         # Final transformation matrix
-        return np.dot(A2, np.dot(T, np.dot(R, A1)))
+        A3 = np.dot(A2, np.concatenate((R, T), axis=1))
+        
+        return np.dot(A3, A1)
